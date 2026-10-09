@@ -4,9 +4,9 @@
 # Run at the ML-Planner repository root:
 #   curl -fsSL https://raw.githubusercontent.com/yhisaki/diffusion_planner_dashboard/main/install.sh | bash
 #
-# The dashboard is cloned into packages/diffusion_planner_dashboard, hidden from git via
-# .git/info/exclude, and installed in editable mode into ML-Planner's .venv. It is not a
-# uv workspace member, so ML-Planner's pyproject.toml and uv.lock are not modified.
+# The dashboard is cloned into packages/diffusion_planner_dashboard and installed in
+# editable mode into ML-Planner's .venv. It is not a uv workspace member, so ML-Planner's
+# pyproject.toml and uv.lock are not modified.
 set -euo pipefail
 
 REPO_URL="${DASHBOARD_REPO_URL:-https://github.com/yhisaki/diffusion_planner_dashboard.git}"
@@ -38,18 +38,11 @@ else
   git clone --branch "$BRANCH" "$REPO_URL" "$DEST"
 fi
 
-exclude_file="$(git rev-parse --git-path info/exclude)"
-mkdir -p "$(dirname "$exclude_file")"
-if ! grep -qxE "/?$DEST/?" "$exclude_file" 2>/dev/null; then
-  echo "/$DEST/" >>"$exclude_file"
-  echo "Added /$DEST/ to $exclude_file"
-fi
-
 # --inexact keeps packages that are not in uv.lock, such as a previous dashboard install.
 uv sync --inexact
 # Pin shared dependencies to ML-Planner's uv.lock so a later 'uv run' does not reinstall them.
 uv pip install --python .venv -e "$DEST" \
-  --constraints <(uv export --frozen --no-hashes --no-emit-workspace --quiet)
+  --constraints <(uv export --frozen --no-hashes --no-emit-workspace)
 
 cat <<MSG
 

@@ -12,8 +12,8 @@ Run at the ML-Planner repository root:
 curl -fsSL https://raw.githubusercontent.com/yhisaki/diffusion_planner_dashboard/main/install.sh | bash
 ```
 
-The script clones this repository into `packages/diffusion_planner_dashboard`, adds it to
-`.git/info/exclude`, and installs it in editable mode into ML-Planner's `.venv`.
+The script clones this repository into `packages/diffusion_planner_dashboard` and
+installs it in editable mode into ML-Planner's `.venv`.
 ML-Planner's `pyproject.toml` and `uv.lock` are not modified. Rerun the script to update.
 
 ## Usage
