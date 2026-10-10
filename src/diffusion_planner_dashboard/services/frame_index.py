@@ -16,7 +16,7 @@ from diffusion_planner.data.h5_layout import PACKED_DATASET
 
 H5_FORMAT = "diffusion_planner_frame_dataset"
 # Version 5 only adds the ego pose to metadata/, so version 4 shards still load.
-H5_FORMAT_VERSIONS = frozenset({4, 5})
+H5_FORMAT_VERSIONS = frozenset({6})
 PARQUET_REQUIRED_COLUMNS = frozenset({"h5_path", "frame_index", "frame_time_ns"})
 
 hdf5plugin.register(filters="zstd")

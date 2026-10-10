@@ -93,7 +93,7 @@ _TENSOR_SPECS: dict[str, TensorDisplaySpec] = {
         fields=_TRAFFIC_LIGHT_FIELDS,
     ),
     "ego_shape": TensorDisplaySpec(
-        fields=("base_link_to_front", "vehicle_length", "vehicle_width")
+        fields=("base_link_to_front", "vehicle_length", "vehicle_width", "wheel_base")
     ),
     "goal_pose": TensorDisplaySpec(fields=_POSE_FIELDS),
     "lanes_speed_limit": TensorDisplaySpec(
