@@ -233,6 +233,14 @@ def _augment_frame(
             "speed_scale": {"mean": ego_speed_scale, "std": 0.0},
             "steering_offset": {"mean": steering_offset, "std": 0.0},
         },
+        curve={
+            "steering_threshold": 0.17453292519943295,
+            "longitudinal_offset": {"mean": longitudinal_offset, "std": 0.0},
+            "lateral_offset": {"mean": lateral_offset, "std": 0.0},
+            "yaw_offset": {"mean": yaw_offset, "std": 0.0},
+            "speed_scale": {"mean": ego_speed_scale, "std": 0.0},
+            "steering_offset": {"mean": steering_offset, "std": 0.0},
+        },
         stopped_in_intersection={
             "stopped_speed_threshold": 0.1,
             "longitudinal_offset": {"mean": longitudinal_offset, "std": 0.0},
