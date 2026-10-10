@@ -77,7 +77,9 @@ def _cached_frame(
 class ILQRSettings:
     """User-adjustable iLQR settings for the augmentation inspector."""
 
-    state_weights: tuple[float, float, float]
+    longitudinal_position_weight: float
+    lateral_position_weight: float
+    heading_weight: float
     terminal_weight_scale: float
     velocity_weight: float
     steering_weight: float
@@ -177,9 +179,13 @@ def _render_augmentation_settings() -> AugmentationPipelineSettings:
     )
     with st.sidebar.expander("iLQR parameters", expanded=False):
         st.caption("Trajectory tracking weights")
-        q_x = float(st.number_input("Position X weight", 0.0, value=1.0, step=0.1))
-        q_y = float(st.number_input("Position Y weight", 0.0, value=1.0, step=0.1))
-        q_yaw = float(st.number_input("Yaw weight", 0.0, value=0.5, step=0.1))
+        q_longitudinal = float(
+            st.number_input("Longitudinal position weight", 0.0, value=1.0, step=0.1)
+        )
+        q_lateral = float(
+            st.number_input("Lateral position weight", 0.0, value=1.0, step=0.1)
+        )
+        q_heading = float(st.number_input("Heading weight", 0.0, value=0.5, step=0.1))
         terminal_weight_scale = float(
             st.number_input("Terminal weight scale", 0.0, value=10.0, step=1.0)
         )
@@ -256,7 +262,9 @@ def _render_augmentation_settings() -> AugmentationPipelineSettings:
         ego_speed_scale=ego_speed_scale,
         steering_offset=math.radians(steering_offset_degrees),
         ilqr=ILQRSettings(
-            state_weights=(q_x, q_y, q_yaw),
+            longitudinal_position_weight=q_longitudinal,
+            lateral_position_weight=q_lateral,
+            heading_weight=q_heading,
             terminal_weight_scale=terminal_weight_scale,
             velocity_weight=velocity_weight,
             steering_weight=steering_weight,
@@ -283,7 +291,9 @@ def _refinement(
         return None
     ilqr = settings.ilqr
     return PlannerILQRRefinement(
-        state_weights=ilqr.state_weights,
+        longitudinal_position_weight=ilqr.longitudinal_position_weight,
+        lateral_position_weight=ilqr.lateral_position_weight,
+        heading_weight=ilqr.heading_weight,
         terminal_weight_scale=ilqr.terminal_weight_scale,
         velocity_weight=ilqr.velocity_weight,
         steering_weight=ilqr.steering_weight,
@@ -469,7 +479,9 @@ def render_data_augmentation() -> None:
         with original_tab:
             render_tensor_table(original, key_prefix="augmentation-original-inspector")
         with augmented_tab:
-            render_tensor_table(augmented, key_prefix="augmentation-augmented-inspector")
+            render_tensor_table(
+                augmented, key_prefix="augmentation-augmented-inspector"
+            )
         with difference_tab:
             render_tensor_table(
                 difference, key_prefix="augmentation-difference-inspector"
