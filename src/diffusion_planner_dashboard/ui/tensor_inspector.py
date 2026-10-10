@@ -43,7 +43,7 @@ _LANE_FIELDS = (
     *(f"right_type_{name}" for name in _LANE_TYPES),
 )
 _POSE_FIELDS = ("x", "y", "cos_yaw", "sin_yaw")
-_EGO_FIELDS = (*_POSE_FIELDS, "velocity", "yaw_rate")
+_EGO_FIELDS = (*_POSE_FIELDS, "velocity", "steering", "yaw_rate")
 _NEIGHBOR_FIELDS = _POSE_FIELDS
 _TRAFFIC_LIGHT_FIELDS = (
     "green",
