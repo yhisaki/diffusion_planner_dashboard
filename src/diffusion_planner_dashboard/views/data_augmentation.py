@@ -78,7 +78,6 @@ class ILQRSettings:
     """User-adjustable iLQR settings for the augmentation inspector."""
 
     num_refine: int
-    wheelbase_m: float
     state_weights: tuple[float, float, float]
     terminal_weight_scale: float
     velocity_weight: float
@@ -200,9 +199,6 @@ def _render_augmentation_settings() -> AugmentationPipelineSettings:
                 help="iLQR refines the future through this index.",
             )
         )
-        wheelbase_m = float(
-            st.number_input("Wheelbase [m]", 0.1, 10.0, 2.79, step=0.01)
-        )
         st.caption("Trajectory tracking weights")
         q_x = float(st.number_input("Position X weight", 0.0, value=1.0, step=0.1))
         q_y = float(st.number_input("Position Y weight", 0.0, value=1.0, step=0.1))
@@ -277,7 +273,6 @@ def _render_augmentation_settings() -> AugmentationPipelineSettings:
         ego_speed_scale=ego_speed_scale,
         ilqr=ILQRSettings(
             num_refine=num_refine,
-            wheelbase_m=wheelbase_m,
             state_weights=(q_x, q_y, q_yaw),
             terminal_weight_scale=terminal_weight_scale,
             velocity_weight=velocity_weight,
@@ -304,7 +299,6 @@ def _refinement(
     ilqr = settings.ilqr
     return PlannerILQRRefinement(
         num_refine=ilqr.num_refine,
-        wheelbase_m=ilqr.wheelbase_m,
         state_weights=ilqr.state_weights,
         terminal_weight_scale=ilqr.terminal_weight_scale,
         velocity_weight=ilqr.velocity_weight,
