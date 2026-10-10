@@ -10,6 +10,8 @@ import h5py
 import hdf5plugin
 import numpy as np
 
+from diffusion_planner.data.h5_layout import PACKED_DATASET, packed_layout
+
 from .frame_index import FrameIndexRow, _validate_h5
 
 hdf5plugin.register(filters="zstd")
@@ -36,6 +38,16 @@ class FrameLoader:
             raise IndexError(
                 f"frame_index {row.frame_index} is outside {path} with {num_frames} frames"
             )
+        layout = packed_layout(file)
+        if layout is not None:
+            packed = file[PACKED_DATASET]
+            if not isinstance(packed, h5py.Dataset):
+                raise ValueError(f"H5 {PACKED_DATASET} must be a dataset: {path}")
+            # Copies, so a frame does not keep the whole packed row alive.
+            row_values = np.asarray(packed[row.frame_index])
+            return {
+                key: value.copy() for key, value in layout.unpack(row_values).items()
+            }
         frames = file["frames"]
         if not isinstance(frames, h5py.Group):
             raise ValueError(f"H5 frames must be a group: {path}")

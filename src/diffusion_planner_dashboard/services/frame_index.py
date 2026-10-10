@@ -12,6 +12,8 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 from numpy.typing import NDArray
 
+from diffusion_planner.data.h5_layout import PACKED_DATASET
+
 H5_FORMAT = "diffusion_planner_frame_dataset"
 # Version 5 only adds the ego pose to metadata/, so version 4 shards still load.
 H5_FORMAT_VERSIONS = frozenset({4, 5})
@@ -197,5 +199,7 @@ def _validate_h5(file: h5py.File, path: Path) -> None:
         raise ValueError(f"Unexpected H5 format: {path}")
     if int(file.attrs.get("format_version", -1)) not in H5_FORMAT_VERSIONS:
         raise ValueError(f"Unsupported H5 format version: {path}")
-    if "frames" not in file or "metadata" not in file or "num_frames" not in file.attrs:
+    # Frame tensors are packed in one dataset, or one dataset per tensor in older shards.
+    has_frames = PACKED_DATASET in file or "frames" in file
+    if not has_frames or "metadata" not in file or "num_frames" not in file.attrs:
         raise ValueError(f"Incomplete H5 frame source: {path}")
