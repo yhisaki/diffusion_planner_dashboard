@@ -95,6 +95,7 @@ def _cached_prediction(
     lateral_offset: float,
     yaw_offset: float,
     ego_speed_scale: float,
+    steering_offset: float,
     remove_neighbor_agents: bool,
     removed_neighbor_indices: tuple[int, ...],
     remove_pedestrians: bool,
@@ -127,6 +128,7 @@ def _cached_prediction(
             lateral_offset,
             yaw_offset,
             ego_speed_scale,
+            steering_offset,
         )
     if isinstance(planner, LoadedOnnxPlanner):
         return run_onnx_inference(
@@ -163,6 +165,7 @@ def _cached_turn_indicator_prediction(
     lateral_offset: float,
     yaw_offset: float,
     ego_speed_scale: float,
+    steering_offset: float,
     remove_neighbor_agents: bool,
     removed_neighbor_indices: tuple[int, ...],
     remove_pedestrians: bool,
@@ -198,6 +201,7 @@ def _cached_turn_indicator_prediction(
             lateral_offset,
             yaw_offset,
             ego_speed_scale,
+            steering_offset,
         )
     return run_turn_indicator_inference(
         loaded.model, frame_data, ego_trajectory, device=device
@@ -213,6 +217,7 @@ def _augment_frame(
     lateral_offset: float,
     yaw_offset: float,
     ego_speed_scale: float,
+    steering_offset: float,
 ) -> dict[str, Any]:
     """Apply a deterministic training augmentation to one frame."""
     start_decision = PlannerStartDecisionAugmentation(
@@ -237,6 +242,10 @@ def _augment_frame(
         speed={
             "speed_scale_range": (ego_speed_scale, ego_speed_scale),
             "speed_noise_range": (0.0, 0.0),
+            "probability": 1.0,
+        },
+        steering={
+            "offset_range": (steering_offset, steering_offset),
             "probability": 1.0,
         },
     )
@@ -409,7 +418,7 @@ def _render_inference_settings(onnx_model: bool) -> tuple[str, int, float, float
 
 
 def _render_augmentation_settings() -> tuple[
-    bool, bool, float, int, float, float, float, float
+    bool, bool, float, int, float, float, float, float, float
 ]:
     """Render deterministic augmentation controls for checkpoint inference."""
     st.sidebar.subheader("Data augmentation")
@@ -477,6 +486,18 @@ def _render_augmentation_settings() -> tuple[
             disabled=not enabled,
         )
     )
+    steering_offset = math.radians(
+        float(
+            st.sidebar.slider(
+                "Ego steering offset [deg]",
+                min_value=-10.0,
+                max_value=10.0,
+                value=0.0,
+                step=0.1,
+                disabled=not enabled,
+            )
+        )
+    )
     return (
         enabled,
         apply_start_decision,
@@ -486,6 +507,7 @@ def _render_augmentation_settings() -> tuple[
         lateral_offset,
         math.radians(yaw_offset_degrees),
         ego_speed_scale,
+        steering_offset,
     )
 
 
@@ -533,6 +555,7 @@ def render_training_results() -> None:
         lateral_offset,
         yaw_offset,
         ego_speed_scale,
+        steering_offset,
     ) = _render_augmentation_settings()
     (
         remove_neighbor_agents,
@@ -618,6 +641,7 @@ def render_training_results() -> None:
                 lateral_offset,
                 yaw_offset,
                 ego_speed_scale,
+                steering_offset,
             )
         prediction, inference_seconds = _cached_prediction(
             str(checkpoint_path),
@@ -639,6 +663,7 @@ def render_training_results() -> None:
             lateral_offset,
             yaw_offset,
             ego_speed_scale,
+            steering_offset,
             remove_neighbor_agents,
             removed_neighbor_indices,
             remove_pedestrians,
@@ -663,6 +688,7 @@ def render_training_results() -> None:
                 lateral_offset,
                 yaw_offset,
                 ego_speed_scale,
+                steering_offset,
                 remove_neighbor_agents,
                 removed_neighbor_indices,
                 remove_pedestrians,
@@ -683,7 +709,8 @@ def render_training_results() -> None:
             f"Augmentation: longitudinal offset {longitudinal_offset:.2f} m · "
             f"lateral offset {lateral_offset:.2f} m · "
             f"yaw offset {math.degrees(yaw_offset):.2f} deg · "
-            f"ego history speed scale {ego_speed_scale:.2f}"
+            f"ego history speed scale {ego_speed_scale:.2f} · "
+            f"ego steering offset {math.degrees(steering_offset):.2f} deg"
         )
         if apply_start_decision:
             st.caption(
@@ -745,7 +772,7 @@ def render_training_results() -> None:
         f"{noise_scale}::{seed}::{apply_augmentation}::{longitudinal_offset}::"
         f"{apply_start_decision}::{start_stop_speed_threshold}::"
         f"{start_max_shift_steps}::"
-        f"{lateral_offset}::{yaw_offset}::{ego_speed_scale}::"
+        f"{lateral_offset}::{yaw_offset}::{ego_speed_scale}::{steering_offset}::"
         f"{remove_neighbor_agents}::{removed_neighbor_indices}::"
         f"{remove_pedestrians}::{remove_bikes}::"
         f"{infer_future_traffic_lights}"
