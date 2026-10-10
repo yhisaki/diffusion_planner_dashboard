@@ -227,26 +227,22 @@ def _augment_frame(
     )
     ego_state_augmentation = PlannerEgoStateAugmentation(
         normal_case={
-            "probability": 1.0,
-            "longitudinal_offset_range": (longitudinal_offset, longitudinal_offset),
-            "lateral_offset_range": (lateral_offset, lateral_offset),
-            "yaw_offset_range": (yaw_offset, yaw_offset),
+            "longitudinal_offset": {"mean": longitudinal_offset, "std": 0.0},
+            "lateral_offset": {"mean": lateral_offset, "std": 0.0},
+            "yaw_offset": {"mean": yaw_offset, "std": 0.0},
         },
         stopped_in_intersection={
-            "probability": 1.0,
             "stopped_speed_threshold": 0.1,
-            "longitudinal_offset_range": (longitudinal_offset, longitudinal_offset),
-            "lateral_offset_range": (lateral_offset, lateral_offset),
-            "yaw_offset_range": (yaw_offset, yaw_offset),
+            "longitudinal_offset": {"mean": longitudinal_offset, "std": 0.0},
+            "lateral_offset": {"mean": lateral_offset, "std": 0.0},
+            "yaw_offset": {"mean": yaw_offset, "std": 0.0},
         },
         speed={
-            "speed_scale_range": (ego_speed_scale, ego_speed_scale),
-            "speed_noise_range": (0.0, 0.0),
-            "probability": 1.0,
+            "speed_scale": {"mean": ego_speed_scale, "std": 0.0},
+            "speed_noise": {"mean": 0.0, "std": 0.0},
         },
         steering={
-            "offset_range": (steering_offset, steering_offset),
-            "probability": 1.0,
+            "offset": {"mean": steering_offset, "std": 0.0},
         },
     )
     output = start_decision(frame_data) if apply_start_decision else frame_data
