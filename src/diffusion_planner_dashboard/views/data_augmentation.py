@@ -105,6 +105,7 @@ class AugmentationPipelineSettings:
     lateral_offset: float
     yaw_offset: float
     ego_speed_scale: float
+    steering_offset: float
     ilqr: ILQRSettings
 
 
@@ -162,6 +163,15 @@ def _render_augmentation_settings() -> AugmentationPipelineSettings:
             max_value=2.0,
             value=1.0,
             step=0.01,
+        )
+    )
+    steering_offset_degrees = float(
+        st.sidebar.slider(
+            "Ego steering offset [deg]",
+            min_value=-10.0,
+            max_value=10.0,
+            value=0.0,
+            step=0.1,
         )
     )
     with st.sidebar.expander("iLQR parameters", expanded=False):
@@ -243,6 +253,7 @@ def _render_augmentation_settings() -> AugmentationPipelineSettings:
         lateral_offset=lateral_offset,
         yaw_offset=math.radians(yaw_offset_degrees),
         ego_speed_scale=ego_speed_scale,
+        steering_offset=math.radians(steering_offset_degrees),
         ilqr=ILQRSettings(
             state_weights=(q_x, q_y, q_yaw),
             terminal_weight_scale=terminal_weight_scale,
@@ -317,6 +328,10 @@ def _augment_frame(
         speed={
             "speed_scale_range": (settings.ego_speed_scale,) * 2,
             "speed_noise_range": (0.0, 0.0),
+            "probability": 1.0,
+        },
+        steering={
+            "offset_range": (settings.steering_offset,) * 2,
             "probability": 1.0,
         },
     )
