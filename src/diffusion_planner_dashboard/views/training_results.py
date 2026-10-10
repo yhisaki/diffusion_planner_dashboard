@@ -12,8 +12,7 @@ import torch
 from numpy.typing import NDArray
 
 from diffusion_planner.data import (
-    PlannerPoseAugmentation,
-    PlannerSpeedAugmentation,
+    PlannerEgoStateAugmentation,
     PlannerStartDecisionAugmentation,
     fill_unknown_traffic_light_futures,
 )
@@ -221,12 +220,7 @@ def _augment_frame(
         stop_speed_threshold=start_stop_speed_threshold,
         max_shift_steps=start_max_shift_steps,
     )
-    speed_augmentation = PlannerSpeedAugmentation(
-        speed_scale_range=(ego_speed_scale, ego_speed_scale),
-        speed_noise_range=(0.0, 0.0),
-        probability=1.0,
-    )
-    pose_augmentation = PlannerPoseAugmentation(
+    ego_state_augmentation = PlannerEgoStateAugmentation(
         normal_case={
             "probability": 1.0,
             "longitudinal_offset_range": (longitudinal_offset, longitudinal_offset),
@@ -242,9 +236,14 @@ def _augment_frame(
             "lateral_offset_range": (lateral_offset, lateral_offset),
             "yaw_offset_range": (yaw_offset, yaw_offset),
         },
+        speed={
+            "speed_scale_range": (ego_speed_scale, ego_speed_scale),
+            "speed_noise_range": (0.0, 0.0),
+            "probability": 1.0,
+        },
     )
     output = start_decision(frame_data) if apply_start_decision else frame_data
-    return speed_augmentation(pose_augmentation(output))
+    return ego_state_augmentation(output)
 
 
 def _remove_neighbor_agents(frame_data: dict[str, Any]) -> dict[str, Any]:

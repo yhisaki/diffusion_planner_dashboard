@@ -16,9 +16,8 @@ from omegaconf import OmegaConf
 import diffusion_planner
 from diffusion_planner.data import (
     PlannerFixStopPoint,
+    PlannerEgoStateAugmentation,
     PlannerILQRRefinement,
-    PlannerPoseAugmentation,
-    PlannerSpeedAugmentation,
     PlannerStartDecisionAugmentation,
 )
 from diffusion_planner.visualizer import plot_frame
@@ -99,11 +98,10 @@ class AugmentationPipelineSettings:
     apply_fix_stop_point: bool
     fix_stop_speed_threshold: float
     fix_stop_stopped_ego_search_start_index: int
-    apply_pose: bool
+    apply_ego_state: bool
     pose_speed_check_index: int
     pose_speed_threshold: float
     refinement: str
-    apply_speed: bool
     longitudinal_offset: float
     lateral_offset: float
     yaw_offset: float
@@ -116,13 +114,12 @@ def _render_augmentation_settings() -> AugmentationPipelineSettings:
     st.sidebar.caption("Training order")
     apply_start_decision = st.sidebar.checkbox("1. Start Decision", value=False)
     apply_fix_stop_point = st.sidebar.checkbox("2. Fix Stop Point", value=True)
-    apply_pose = st.sidebar.checkbox("3. Pose Augmentation", value=True)
+    apply_ego_state = st.sidebar.checkbox("3. Ego State Augmentation", value=True)
     refinement = str(
         st.sidebar.radio(
             "4. Refinement", ("iLQR", "Frenet", "None"), index=0, horizontal=True
         )
     )
-    apply_speed = st.sidebar.checkbox("5. Speed Augmentation", value=True)
     with st.sidebar.expander("Start Decision parameters", expanded=False):
         start_stop_speed_threshold = float(
             st.number_input(
@@ -262,11 +259,10 @@ def _render_augmentation_settings() -> AugmentationPipelineSettings:
         fix_stop_stopped_ego_search_start_index=(
             fix_stop_stopped_ego_search_start_index
         ),
-        apply_pose=apply_pose,
+        apply_ego_state=apply_ego_state,
         pose_speed_check_index=pose_speed_check_index,
         pose_speed_threshold=pose_speed_threshold,
         refinement=refinement,
-        apply_speed=apply_speed,
         longitudinal_offset=longitudinal_offset,
         lateral_offset=lateral_offset,
         yaw_offset=math.radians(yaw_offset_degrees),
@@ -326,12 +322,7 @@ def _augment_frame(
             settings.fix_stop_stopped_ego_search_start_index
         ),
     )
-    speed_augmentation = PlannerSpeedAugmentation(
-        speed_scale_range=(settings.ego_speed_scale, settings.ego_speed_scale),
-        speed_noise_range=(0.0, 0.0),
-        probability=1.0,
-    )
-    pose_augmentation = PlannerPoseAugmentation(
+    ego_state_augmentation = PlannerEgoStateAugmentation(
         normal_case={
             "probability": 1.0,
             "longitudinal_offset_range": (settings.longitudinal_offset,) * 2,
@@ -347,6 +338,11 @@ def _augment_frame(
             "lateral_offset_range": (settings.lateral_offset,) * 2,
             "yaw_offset_range": (settings.yaw_offset,) * 2,
         },
+        speed={
+            "speed_scale_range": (settings.ego_speed_scale,) * 2,
+            "speed_noise_range": (0.0, 0.0),
+            "probability": 1.0,
+        },
     )
     refinement = _refinement(settings)
     output = dict(frame_data)
@@ -354,12 +350,10 @@ def _augment_frame(
         output = start_decision(output)
     if settings.apply_fix_stop_point:
         output = fix_stop_point(output)
-    if settings.apply_pose:
-        output = pose_augmentation(output)
+    if settings.apply_ego_state:
+        output = ego_state_augmentation(output)
     if refinement is not None:
         output = refinement(output)
-    if settings.apply_speed:
-        output = speed_augmentation(output)
     return output
 
 
@@ -417,15 +411,14 @@ def render_data_augmentation() -> None:
         for name, applied in (
             ("Start Decision", settings.apply_start_decision),
             ("Fix Stop Point", settings.apply_fix_stop_point),
-            ("Pose", settings.apply_pose),
+            ("Ego State", settings.apply_ego_state),
             (settings.refinement, settings.refinement != "None"),
-            ("Speed", settings.apply_speed),
         )
         if applied
     ]
     st.caption(
-        "Training-order pipeline: Start Decision → Fix Stop Point → Pose → "
-        f"iLQR or Frenet → Speed. Enabled: {', '.join(enabled) if enabled else 'none'}."
+        "Training-order pipeline: Start Decision → Fix Stop Point → Ego State → "
+        f"iLQR or Frenet. Enabled: {', '.join(enabled) if enabled else 'none'}."
     )
     original_column, augmented_column = st.columns(2)
     chart_identity = f"{index.path}::{row.index}::{settings}"
