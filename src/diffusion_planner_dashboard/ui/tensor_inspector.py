@@ -180,27 +180,34 @@ def render_tensor_inspector(
 ) -> None:
     """Render a collapsed raw-data inspector for the selected frame."""
     with st.expander("Tensor Inspector", expanded=False):
-        tensor_names = sorted(frame_data)
-        if not tensor_names:
-            st.info("The selected frame does not contain tensor data.")
-            return
+        render_tensor_table(frame_data, key_prefix=key_prefix)
 
-        tensor_name = st.selectbox(
-            "Tensor",
-            tensor_names,
-            key=f"{key_prefix}::tensor",
+
+def render_tensor_table(
+    frame_data: Mapping[str, Any], *, key_prefix: str = "tensor-inspector"
+) -> None:
+    """Render the tensor selector and its raw values."""
+    tensor_names = sorted(frame_data)
+    if not tensor_names:
+        st.info("The selected frame does not contain tensor data.")
+        return
+
+    tensor_name = st.selectbox(
+        "Tensor",
+        tensor_names,
+        key=f"{key_prefix}::tensor",
+    )
+    array = np.asarray(frame_data[tensor_name])
+    st.caption(f"Shape: {array.shape} · Dtype: {array.dtype}")
+
+    spec = _TENSOR_SPECS.get(tensor_name, TensorDisplaySpec())
+    displayed, selected = _slice_tensor(tensor_name, array, spec, key_prefix)
+    if selected:
+        prefix = ", ".join(str(index) for index in selected)
+        st.code(
+            f"{tensor_name}[{prefix}, :, :]  shape={displayed.shape}", language=None
         )
-        array = np.asarray(frame_data[tensor_name])
-        st.caption(f"Shape: {array.shape} · Dtype: {array.dtype}")
+    else:
+        st.code(f"{tensor_name}[:]  shape={displayed.shape}", language=None)
 
-        spec = _TENSOR_SPECS.get(tensor_name, TensorDisplaySpec())
-        displayed, selected = _slice_tensor(tensor_name, array, spec, key_prefix)
-        if selected:
-            prefix = ", ".join(str(index) for index in selected)
-            st.code(
-                f"{tensor_name}[{prefix}, :, :]  shape={displayed.shape}", language=None
-            )
-        else:
-            st.code(f"{tensor_name}[:]  shape={displayed.shape}", language=None)
-
-        st.dataframe(_table_data(displayed, spec), width="stretch", hide_index=True)
+    st.dataframe(_table_data(displayed, spec), width="stretch", hide_index=True)

@@ -13,6 +13,7 @@ from diffusion_planner_dashboard.services import (
     FrameLoader,
     load_frame_index,
 )
+from diffusion_planner_dashboard.ui.ego_state_chart import render_ego_state_chart
 from diffusion_planner_dashboard.ui.metadata import (
     render_index_summary,
     render_row_metadata,
@@ -99,3 +100,4 @@ def render_frame_browser() -> None:
         config={"responsive": True, "scrollZoom": True},
     )
     render_tensor_inspector(frame_data)
+    render_ego_state_chart({"frame": frame_data})

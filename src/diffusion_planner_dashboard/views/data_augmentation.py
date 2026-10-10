@@ -28,6 +28,7 @@ from diffusion_planner_dashboard.services import (
     inspect_augmentation,
     load_frame_index,
 )
+from diffusion_planner_dashboard.ui.ego_state_chart import render_ego_state_chart
 from diffusion_planner_dashboard.ui.metadata import (
     render_index_summary,
     render_row_metadata,
@@ -37,7 +38,7 @@ from diffusion_planner_dashboard.ui.settings import (
     render_frame_selector,
     render_plot_options,
 )
-from diffusion_planner_dashboard.ui.tensor_inspector import render_tensor_inspector
+from diffusion_planner_dashboard.ui.tensor_inspector import render_tensor_table
 
 # The training transform configs of the workspace this dashboard runs from.
 TRANSFORM_CONFIGS = (
@@ -461,16 +462,19 @@ def render_data_augmentation() -> None:
     st.dataframe(inspection, width="stretch", hide_index=True)
 
     difference = _difference_frame(original, augmented)
-    original_tab, augmented_tab, difference_tab = st.tabs(
-        ("Original tensors", "Augmented tensors", "Difference")
+    with st.expander("Tensor Inspector", expanded=False):
+        original_tab, augmented_tab, difference_tab = st.tabs(
+            ("Original tensors", "Augmented tensors", "Difference")
+        )
+        with original_tab:
+            render_tensor_table(original, key_prefix="augmentation-original-inspector")
+        with augmented_tab:
+            render_tensor_table(augmented, key_prefix="augmentation-augmented-inspector")
+        with difference_tab:
+            render_tensor_table(
+                difference, key_prefix="augmentation-difference-inspector"
+            )
+    render_ego_state_chart(
+        {"original": original, "augmented": augmented},
+        key_prefix="augmentation-ego-state-chart",
     )
-    with original_tab:
-        render_tensor_inspector(original, key_prefix="augmentation-original-inspector")
-    with augmented_tab:
-        render_tensor_inspector(
-            augmented, key_prefix="augmentation-augmented-inspector"
-        )
-    with difference_tab:
-        render_tensor_inspector(
-            difference, key_prefix="augmentation-difference-inspector"
-        )
