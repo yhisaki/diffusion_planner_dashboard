@@ -226,8 +226,6 @@ def _augment_frame(
             "longitudinal_offset_range": (longitudinal_offset, longitudinal_offset),
             "lateral_offset_range": (lateral_offset, lateral_offset),
             "yaw_offset_range": (yaw_offset, yaw_offset),
-            "pose_augmentation_endpoint_speed_threshold": 0.1,
-            "pose_augmentation_speed_check_endpoint_index": 20,
         },
         stopped_in_intersection={
             "probability": 1.0,

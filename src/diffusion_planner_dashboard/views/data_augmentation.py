@@ -15,8 +15,8 @@ from omegaconf import OmegaConf
 
 import diffusion_planner
 from diffusion_planner.data import (
-    PlannerFixStopPoint,
     PlannerEgoStateAugmentation,
+    PlannerFixStopPoint,
     PlannerILQRRefinement,
     PlannerStartDecisionAugmentation,
 )
@@ -76,15 +76,16 @@ def _cached_frame(
 class ILQRSettings:
     """User-adjustable iLQR settings for the augmentation inspector."""
 
-    num_refine: int
     state_weights: tuple[float, float, float]
     terminal_weight_scale: float
     velocity_weight: float
     steering_weight: float
-    velocity_rate_weight: float
+    acceleration_weight: float
     steering_rate_weight: float
     velocity_max: float
     steering_limit_rad: float
+    acceleration_bounds: tuple[float, float]
+    steering_rate_limit_rps: float
     max_iterations: int
 
 
@@ -99,8 +100,6 @@ class AugmentationPipelineSettings:
     fix_stop_speed_threshold: float
     fix_stop_stopped_ego_search_start_index: int
     apply_ego_state: bool
-    pose_speed_check_index: int
-    pose_speed_threshold: float
     refinement: str
     longitudinal_offset: float
     lateral_offset: float
@@ -165,37 +164,7 @@ def _render_augmentation_settings() -> AugmentationPipelineSettings:
             step=0.01,
         )
     )
-    with st.sidebar.expander("Pose augmentation parameters", expanded=False):
-        pose_speed_check_index = int(
-            st.number_input(
-                "Speed-check endpoint index",
-                0,
-                79,
-                40,
-                step=1,
-                help="The normal case is skipped unless the future speed at this index exceeds the threshold.",
-            )
-        )
-        pose_speed_threshold = float(
-            st.number_input(
-                "Endpoint speed skip threshold [m/s]",
-                0.0,
-                value=1.5,
-                step=0.1,
-                help="Skip when endpoint speed is at or below this value.",
-            )
-        )
     with st.sidebar.expander("iLQR parameters", expanded=False):
-        num_refine = int(
-            st.number_input(
-                "Refined steps",
-                1,
-                79,
-                40,
-                step=1,
-                help="iLQR refines the future through this index.",
-            )
-        )
         st.caption("Trajectory tracking weights")
         q_x = float(st.number_input("Position X weight", 0.0, value=1.0, step=0.1))
         q_y = float(st.number_input("Position Y weight", 0.0, value=1.0, step=0.1))
@@ -203,18 +172,18 @@ def _render_augmentation_settings() -> AugmentationPipelineSettings:
         terminal_weight_scale = float(
             st.number_input("Terminal weight scale", 0.0, value=10.0, step=1.0)
         )
-        st.caption("Control weights")
         velocity_weight = float(
             st.number_input("Velocity tracking weight", 0.0, value=0.2, step=0.1)
         )
         steering_weight = float(
-            st.number_input("Steering weight", 0.0, value=0.1, step=0.1)
+            st.number_input("Steering tracking weight", 0.0, value=0.1, step=0.1)
         )
-        velocity_rate_weight = float(
-            st.number_input("Velocity change weight", 0.0, value=1.0, step=0.1)
+        st.caption("Input weights")
+        acceleration_weight = float(
+            st.number_input("Acceleration weight", 0.0, value=1.0, step=0.1)
         )
         steering_rate_weight = float(
-            st.number_input("Steering change weight", 0.0, value=10.0, step=1.0)
+            st.number_input("Steering rate weight", 0.0, value=10.0, step=1.0)
         )
         st.caption("Constraints and solver")
         velocity_max = float(
@@ -226,6 +195,15 @@ def _render_augmentation_settings() -> AugmentationPipelineSettings:
                     "Steering limit [deg]", 0.1, 89.0, math.degrees(0.7), step=1.0
                 )
             )
+        )
+        acceleration_min = float(
+            st.number_input("Minimum acceleration [m/s^2]", max_value=0.0, value=-4.0)
+        )
+        acceleration_max = float(
+            st.number_input("Maximum acceleration [m/s^2]", 0.0, value=3.0)
+        )
+        steering_rate_limit_rps = float(
+            st.number_input("Steering rate limit [rad/s]", 0.01, value=1.0, step=0.1)
         )
         max_iterations = int(st.number_input("Maximum iterations", 1, 100, 15, step=1))
     with st.sidebar.expander("Fix stop point", expanded=False):
@@ -260,23 +238,22 @@ def _render_augmentation_settings() -> AugmentationPipelineSettings:
             fix_stop_stopped_ego_search_start_index
         ),
         apply_ego_state=apply_ego_state,
-        pose_speed_check_index=pose_speed_check_index,
-        pose_speed_threshold=pose_speed_threshold,
         refinement=refinement,
         longitudinal_offset=longitudinal_offset,
         lateral_offset=lateral_offset,
         yaw_offset=math.radians(yaw_offset_degrees),
         ego_speed_scale=ego_speed_scale,
         ilqr=ILQRSettings(
-            num_refine=num_refine,
             state_weights=(q_x, q_y, q_yaw),
             terminal_weight_scale=terminal_weight_scale,
             velocity_weight=velocity_weight,
             steering_weight=steering_weight,
-            velocity_rate_weight=velocity_rate_weight,
+            acceleration_weight=acceleration_weight,
             steering_rate_weight=steering_rate_weight,
             velocity_max=velocity_max,
             steering_limit_rad=steering_limit_rad,
+            acceleration_bounds=(acceleration_min, acceleration_max),
+            steering_rate_limit_rps=steering_rate_limit_rps,
             max_iterations=max_iterations,
         ),
     )
@@ -294,15 +271,16 @@ def _refinement(
         return None
     ilqr = settings.ilqr
     return PlannerILQRRefinement(
-        num_refine=ilqr.num_refine,
         state_weights=ilqr.state_weights,
         terminal_weight_scale=ilqr.terminal_weight_scale,
         velocity_weight=ilqr.velocity_weight,
         steering_weight=ilqr.steering_weight,
-        velocity_rate_weight=ilqr.velocity_rate_weight,
+        acceleration_weight=ilqr.acceleration_weight,
         steering_rate_weight=ilqr.steering_rate_weight,
         velocity_bounds=(0.0, ilqr.velocity_max),
         steering_limit_rad=ilqr.steering_limit_rad,
+        acceleration_bounds=ilqr.acceleration_bounds,
+        steering_rate_limit_rps=ilqr.steering_rate_limit_rps,
         max_iterations=ilqr.max_iterations,
     )
 
@@ -328,8 +306,6 @@ def _augment_frame(
             "longitudinal_offset_range": (settings.longitudinal_offset,) * 2,
             "lateral_offset_range": (settings.lateral_offset,) * 2,
             "yaw_offset_range": (settings.yaw_offset,) * 2,
-            "pose_augmentation_endpoint_speed_threshold": settings.pose_speed_threshold,
-            "pose_augmentation_speed_check_endpoint_index": settings.pose_speed_check_index,
         },
         stopped_in_intersection={
             "probability": 1.0,
